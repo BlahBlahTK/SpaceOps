@@ -151,7 +151,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     setRegistering(true);
     const expiry = new Date();
-    expiry.setFullYear(expiry.getFullYear() + newAssetWarrantyYears);
+    if (newAssetWarrantyYears === 0.5) {
+      expiry.setMonth(expiry.getMonth() + 6);
+    } else if (newAssetWarrantyYears === 0) {
+      expiry.setDate(expiry.getDate() - 1); // Expired yesterday
+    } else {
+      expiry.setFullYear(expiry.getFullYear() + newAssetWarrantyYears);
+    }
 
     const assetData = {
       name: newAssetName.trim(),
@@ -844,8 +850,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       onChange={(e) => setNewAssetCondition(e.target.value)}
                     >
                       <option value="New">New</option>
-                      <option value="Good">Good (Refurbished)</option>
+                      <option value="Excellent">Excellent</option>
+                      <option value="Good">Good</option>
                       <option value="Fair">Fair</option>
+                      <option value="Poor">Poor</option>
+                      <option value="Refurbished">Refurbished</option>
+                      <option value="In Repair">In Repair</option>
                     </select>
                   </div>
                   <div className="form-group">
@@ -855,10 +865,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       value={newAssetWarrantyYears}
                       onChange={(e) => setNewAssetWarrantyYears(Number(e.target.value))}
                     >
+                      <option value={0}>No Warranty / Expired</option>
+                      <option value={0.5}>6 Months</option>
                       <option value={1}>1 Year</option>
                       <option value={2}>2 Years</option>
                       <option value={3}>3 Years</option>
+                      <option value={4}>4 Years</option>
                       <option value={5}>5 Years</option>
+                      <option value={99}>Lifetime Warranty</option>
                     </select>
                   </div>
                 </div>
