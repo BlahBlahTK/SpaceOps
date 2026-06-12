@@ -87,6 +87,7 @@ interface AdminDashboardProps {
   onDeleteRoom: (roomId: string) => Promise<void>;
   onRegisterAsset: (assetData: any) => Promise<void>;
   onDecommissionAsset: (assetId: string) => Promise<void>;
+  onUpdateAsset: (assetId: string, assetData: any) => Promise<void>;
   onRefreshData: () => void;
 }
 
@@ -108,6 +109,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onDeleteRoom,
   onRegisterAsset,
   onDecommissionAsset,
+  onUpdateAsset,
   onRefreshData
 }) => {
   const [adminSubTab, setAdminSubTab] = useState<'analytics' | 'it-assets' | 'offboarding' | 'designer' | 'storage'>('analytics');
@@ -123,6 +125,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newAssetCondition, setNewAssetCondition] = useState('New');
   const [newAssetWarrantyYears, setNewAssetWarrantyYears] = useState(2);
   const [registering, setRegistering] = useState(false);
+
+  // IT Hardware editing states
+  const [editingAsset, setEditingAsset] = useState<any | null>(null);
+  const [editAssetName, setEditAssetName] = useState('');
+  const [editAssetSerial, setEditAssetSerial] = useState('');
+  const [editAssetCondition, setEditAssetCondition] = useState('New');
+  const [editAssetWarrantyUntil, setEditAssetWarrantyUntil] = useState('');
+  const [updatingAsset, setUpdatingAsset] = useState(false);
 
   // Storage Inventory filter states
   const [storageSearch, setStorageSearch] = useState('');
@@ -182,6 +192,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       alert(err.message || 'Failed to register asset.');
     } finally {
       setRegistering(false);
+    }
+  };
+
+  // Start editing a device
+  const handleStartEditAsset = (asset: any) => {
+    setEditingAsset(asset);
+    setEditAssetName(asset.name);
+    setEditAssetSerial(asset.serialNumber);
+    setEditAssetCondition(asset.condition);
+    setEditAssetWarrantyUntil(asset.warrantyUntil || '');
+  };
+
+  // Submit edit form
+  const handleEditAssetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAsset || !editAssetName.trim() || !editAssetSerial.trim()) return;
+
+    setUpdatingAsset(true);
+    try {
+      await onUpdateAsset(editingAsset.id, {
+        name: editAssetName.trim(),
+        serialNumber: editAssetSerial.trim().toUpperCase(),
+        condition: editAssetCondition,
+        warrantyUntil: editAssetWarrantyUntil
+      });
+      setEditingAsset(null);
+      alert('Device details updated successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to update device.');
+    } finally {
+      setUpdatingAsset(false);
     }
   };
 
@@ -1225,6 +1266,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               Assign Device
                             </button>
                             <button
+                              onClick={() => handleStartEditAsset(asset)}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                            >
+                              Edit Device
+                            </button>
+                            <button
                               onClick={async () => {
                                 const confirmDecom = window.confirm(`Are you sure you want to decommission ${asset.name} (S/N: ${asset.serialNumber})? This will permanently retire the device.`);
                                 if (confirmDecom) {
@@ -1357,6 +1405,111 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   style={{ flex: 2 }}
                 >
                   {addingDesk ? 'Placing...' : 'Confirm Placement'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Device Modal */}
+      {editingAsset && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem'
+          }}
+        >
+          <div className="glass-panel animate-fade-in" style={{ maxWidth: '420px', width: '100%', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.25rem', color: 'white', fontFamily: 'var(--font-display)' }}>
+                ✏️ Edit Storage Device
+              </h3>
+              <button 
+                onClick={() => setEditingAsset(null)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '1.25rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleEditAssetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group">
+                <label>Device Name / Model</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editAssetName}
+                  onChange={(e) => setEditAssetName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Serial Number</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editAssetSerial}
+                  onChange={(e) => setEditAssetSerial(e.target.value.toUpperCase())}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Condition</label>
+                <select
+                  className="form-input"
+                  value={editAssetCondition}
+                  onChange={(e) => setEditAssetCondition(e.target.value)}
+                >
+                  <option value="New">New</option>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Poor">Poor</option>
+                  <option value="Refurbished">Refurbished</option>
+                  <option value="In Repair">In Repair</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Warranty Expiration Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={editAssetWarrantyUntil}
+                  onChange={(e) => setEditAssetWarrantyUntil(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingAsset(null)}
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingAsset || !editAssetName.trim() || !editAssetSerial.trim()}
+                  className="btn btn-cyan"
+                  style={{ flex: 2 }}
+                >
+                  {updatingAsset ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

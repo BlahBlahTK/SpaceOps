@@ -349,6 +349,20 @@ export default function App() {
     await fetchData();
   };
 
+  // 16. IT Asset Update
+  const handleUpdateAsset = async (assetId: string, assetData: any) => {
+    const res = await fetch(`${API_BASE}/assets/${assetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(assetData)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update asset');
+    }
+    await fetchData();
+  };
+
   // Render view
   if (loading) {
     return (
@@ -489,6 +503,7 @@ export default function App() {
             onDeleteRoom={handleDeleteRoom}
             onRegisterAsset={handleRegisterAsset}
             onDecommissionAsset={handleDecommissionAsset}
+            onUpdateAsset={handleUpdateAsset}
             onRefreshData={fetchData}
           />
         )}

@@ -227,4 +227,37 @@ router.post('/:id/decommission', async (req, res) => {
   }
 });
 
+// PUT /api/assets/:id - edit asset details in storage
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, serialNumber, condition, warrantyUntil } = req.body;
+    
+    if (!name || !serialNumber) {
+      return res.status(400).json({ error: 'Name and Serial Number are required' });
+    }
+
+    const assets = await getAssets();
+    // Validate serial number uniqueness (exclude current asset)
+    if (assets.some(a => a.id !== id && a.serialNumber === serialNumber.toUpperCase())) {
+      return res.status(409).json({ error: 'Another asset with this serial number already exists' });
+    }
+
+    const updated = await updateAsset(id, {
+      name,
+      serialNumber: serialNumber.toUpperCase(),
+      condition,
+      warrantyUntil
+    });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Asset not found' });
+    }
+    
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
