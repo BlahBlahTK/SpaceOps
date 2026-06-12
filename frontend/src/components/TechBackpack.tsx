@@ -11,8 +11,22 @@ interface Asset {
   handoverAcknowledged: boolean;
 }
 
+interface Ticket {
+  id: string;
+  assetId: string;
+  assetName: string;
+  serialNumber: string;
+  reportedBy: string;
+  reportedByName: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 interface TechBackpackProps {
   assets: Asset[];
+  tickets: Ticket[];
   userId: string;
   onAcknowledge: (assetId: string) => Promise<void>;
   onSubmitTicket: (assetId: string, description: string) => Promise<void>;
@@ -20,6 +34,7 @@ interface TechBackpackProps {
 
 export const TechBackpack: React.FC<TechBackpackProps> = ({
   assets,
+  tickets,
   userId,
   onAcknowledge,
   onSubmitTicket
@@ -201,6 +216,94 @@ export const TechBackpack: React.FC<TechBackpackProps> = ({
             })}
           </div>
         )}
+      </div>
+
+      {/* Active Repair Tickets */}
+      <div style={{ marginTop: '2rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'white', fontFamily: 'var(--font-display)', marginBottom: '1.5rem' }}>
+          🛠️ Your Repair Tickets
+        </h2>
+        
+        {(() => {
+          const myTickets = (tickets || []).filter(t => t.reportedBy === userId);
+          if (myTickets.length === 0) {
+            return (
+              <div 
+                className="glass-panel" 
+                style={{ 
+                  textAlign: 'center', 
+                  padding: '2rem', 
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.85rem'
+                }}
+              >
+                No active or historical repair tickets filed for your devices.
+              </div>
+            );
+          }
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {myTickets.map(ticket => {
+                let statusColor = '#F59E0B'; // Pending (yellow)
+                if (ticket.status === 'Open') {
+                  statusColor = '#3B82F6'; // Open (blue)
+                } else if (ticket.status === 'Closed' || ticket.status === 'Resolved') {
+                  statusColor = '#10B981'; // Closed/Resolved (green)
+                } else if (ticket.status === 'In Progress') {
+                  statusColor = '#8B5CF6'; // Purple
+                } else if (ticket.status === 'Waiting on Parts') {
+                  statusColor = '#EF4444'; // Red
+                }
+                
+                return (
+                  <div 
+                    key={ticket.id} 
+                    className="glass-panel animate-fade-in" 
+                    style={{ 
+                      padding: '1.25rem 1.5rem', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.75rem',
+                      borderLeft: `4px solid ${statusColor}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: '700', margin: 0 }}>
+                          {ticket.assetName}
+                        </h4>
+                        <code style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>S/N: {ticket.serialNumber}</code>
+                      </div>
+                      <span 
+                        className="badge" 
+                        style={{ 
+                          fontSize: '0.7rem', 
+                          background: 'rgba(255,255,255,0.03)', 
+                          border: `1px solid ${statusColor}`, 
+                          color: statusColor 
+                        }}
+                      >
+                        {ticket.status}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic' }}>
+                      "{ticket.description}"
+                    </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255, 255, 255, 0.03)', paddingTop: '0.5rem' }}>
+                      <span>Reported: {new Date(ticket.createdAt).toLocaleDateString()}</span>
+                      {ticket.resolvedAt && (
+                        <span>Closed: {new Date(ticket.resolvedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Report Problem Modal Overlay */}

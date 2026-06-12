@@ -79,7 +79,7 @@ interface AdminDashboardProps {
   currentUserId: string;
   analytics: Analytics | null;
   onAssignAsset: (assetId: string, userId: string) => Promise<void>;
-  onResolveTicket: (ticketId: string, returnToStatus: string) => Promise<void>;
+  onUpdateTicket: (ticketId: string, status: string, returnToStatus?: string, deviceCondition?: string) => Promise<void>;
   onOffboardUser: (userId: string) => Promise<{ returnedAssets: any[]; cancelledBookings: any[] }>;
   onAddDesk: (deskData: any) => Promise<void>;
   onDeleteDesk: (deskId: string) => Promise<void>;
@@ -101,7 +101,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   currentUserId,
   analytics,
   onAssignAsset,
-  onResolveTicket,
+  onUpdateTicket,
   onOffboardUser,
   onAddDesk,
   onDeleteDesk,
@@ -133,6 +133,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editAssetCondition, setEditAssetCondition] = useState('New');
   const [editAssetWarrantyUntil, setEditAssetWarrantyUntil] = useState('');
   const [updatingAsset, setUpdatingAsset] = useState(false);
+
+  // IT Ticket closing states
+  const [closingTicketId, setClosingTicketId] = useState<string | null>(null);
+  const [closeCondition, setCloseCondition] = useState<string>('Good');
+  const [closeDestination, setCloseDestination] = useState<'Assigned' | 'New'>('Assigned');
 
   // Storage Inventory filter states
   const [storageSearch, setStorageSearch] = useState('');
@@ -223,6 +228,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       alert(err.message || 'Failed to update device.');
     } finally {
       setUpdatingAsset(false);
+    }
+  };
+
+  // Handle select status update
+  const handleStatusSelectChange = async (ticketId: string, newStatus: string) => {
+    if (newStatus === 'Closed') {
+      setClosingTicketId(ticketId);
+      setCloseCondition('Good');
+      setCloseDestination('Assigned');
+    } else {
+      setClosingTicketId(null);
+      try {
+        await onUpdateTicket(ticketId, newStatus);
+        alert(`Ticket status updated to ${newStatus}`);
+      } catch (err: any) {
+        alert(err.message || 'Failed to update ticket status.');
+      }
+    }
+  };
+
+  // Confirm ticket closing
+  const confirmCloseTicket = async (ticketId: string) => {
+    try {
+      await onUpdateTicket(ticketId, 'Closed', closeDestination, closeCondition);
+      setClosingTicketId(null);
+      alert('Ticket closed and device processed successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to close ticket.');
     }
   };
 
@@ -357,7 +390,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Find unassigned assets to populate dropdown
   const availableAssets = assets.filter(a => !a.assignedTo && ['New', 'Assigned'].includes(a.status));
-  const openTickets = tickets.filter(t => t.status === 'Open');
+  const openTickets = tickets.filter(t => t.status !== 'Closed');
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -753,56 +786,144 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   🎉 No open hardware issues! All assets are fully functional.
                 </div>
               ) : (
-                openTickets.map(ticket => (
-                  <div 
-                    key={ticket.id}
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.03)',
-                      border: '1px solid rgba(239, 68, 68, 0.2)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '1.25rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.75rem'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <h4 style={{ color: 'white', fontSize: '0.9rem', fontWeight: '700' }}>{ticket.assetName}</h4>
-                        <code style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>S/N: {ticket.serialNumber}</code>
-                      </div>
-                      <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}>Open</span>
-                    </div>
+                openTickets.map(ticket => {
+                  let badgeColor = '#EF4444'; // Red for Open
+                  if (ticket.status === 'Pending') badgeColor = '#F59E0B'; // Yellow
+                  else if (ticket.status === 'In Progress') badgeColor = '#8B5CF6'; // Purple
+                  else if (ticket.status === 'Waiting on Parts') badgeColor = '#3B82F6'; // Blue
 
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', background: 'rgba(0,0,0,0.15)', padding: '0.5rem', borderRadius: '4px' }}>
-                      "{ticket.description}"
-                    </p>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>
-                        Reported by: <strong>{ticket.reportedByName}</strong>
-                      </span>
-                      
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <button
-                          onClick={() => onResolveTicket(ticket.id, 'New')}
-                          className="btn btn-secondary"
-                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderRadius: '6px' }}
+                  return (
+                    <div 
+                      key={ticket.id}
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.03)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <h4 style={{ color: 'white', fontSize: '0.9rem', fontWeight: '700' }}>{ticket.assetName}</h4>
+                          <code style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)' }}>S/N: {ticket.serialNumber}</code>
+                        </div>
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            fontSize: '0.6rem', 
+                            border: `1px solid ${badgeColor}`, 
+                            color: badgeColor, 
+                            background: 'transparent' 
+                          }}
                         >
-                          Send to Storage
-                        </button>
-                        <button
-                          onClick={() => onResolveTicket(ticket.id, 'Assigned')}
-                          className="btn btn-primary"
-                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', borderRadius: '6px', background: 'var(--grad-success)' }}
-                        >
-                          Return to Employee
-                        </button>
+                          {ticket.status}
+                        </span>
                       </div>
-                    </div>
 
-                  </div>
-                ))
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', background: 'rgba(0,0,0,0.15)', padding: '0.5rem', borderRadius: '4px' }}>
+                        "{ticket.description}"
+                      </p>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          Reported by: <strong>{ticket.reportedByName}</strong>
+                        </span>
+                        
+                        {ticket.status === 'Pending' ? (
+                          <button
+                            onClick={() => onUpdateTicket(ticket.id, 'Open')}
+                            className="btn btn-primary"
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.7rem', borderRadius: '6px', background: 'var(--grad-success)' }}
+                          >
+                            Recognize & Open Ticket
+                          </button>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Status:</span>
+                            <select
+                              value={ticket.status}
+                              onChange={(e) => handleStatusSelectChange(ticket.id, e.target.value)}
+                              className="role-select"
+                              style={{ padding: '0.15rem 0.35rem', fontSize: '0.7rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-light)' }}
+                            >
+                              <option value="Open">Open</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Waiting on Parts">Waiting on Parts</option>
+                              <option value="Closed">Closed</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Closed Resolution Options Inline Form */}
+                      {closingTicketId === ticket.id && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px dashed rgba(255,255,255,0.08)', paddingTop: '0.75rem', marginTop: '0.5rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem', marginBottom: '0.2rem', display: 'block' }}>Final Device Condition</label>
+                            <select
+                              className="form-input"
+                              style={{ padding: '0.3rem', fontSize: '0.75rem', height: 'auto', background: 'rgba(0,0,0,0.3)' }}
+                              value={closeCondition}
+                              onChange={(e) => setCloseCondition(e.target.value)}
+                            >
+                              <option value="New">New</option>
+                              <option value="Excellent">Excellent</option>
+                              <option value="Good">Good</option>
+                              <option value="Fair">Fair</option>
+                              <option value="Poor">Poor</option>
+                              <option value="Refurbished">Refurbished</option>
+                            </select>
+                          </div>
+                          
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '0.7rem', marginBottom: '0.2rem', display: 'block' }}>Device Destination</label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setCloseDestination('New')}
+                                className="btn"
+                                style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem', borderRadius: '4px', background: closeDestination === 'New' ? 'var(--grad-violet)' : 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)', color: 'white' }}
+                              >
+                                Send to Storage
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCloseDestination('Assigned')}
+                                className="btn"
+                                style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem', borderRadius: '4px', background: closeDestination === 'Assigned' ? 'var(--grad-success)' : 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)', color: 'white' }}
+                              >
+                                Return to Employee
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => setClosingTicketId(null)}
+                              className="btn btn-secondary"
+                              style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem', borderRadius: '4px' }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => confirmCloseTicket(ticket.id)}
+                              className="btn btn-primary"
+                              style={{ flex: 2, padding: '0.35rem', fontSize: '0.7rem', borderRadius: '4px', background: 'var(--grad-violet)' }}
+                            >
+                              Confirm & Close Ticket
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

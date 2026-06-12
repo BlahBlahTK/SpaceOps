@@ -141,7 +141,7 @@ router.post('/:id/report-problem', async (req, res) => {
       reportedBy: userId,
       reportedByName: user.name,
       description,
-      status: 'Open',
+      status: 'Pending',
       createdAt: new Date().toISOString()
     };
 
@@ -200,6 +200,50 @@ router.post('/tickets/:id/resolve', async (req, res) => {
     });
 
     // Save directly since tickets are part of DB
+    const { saveDb } = await import('../db.js');
+    await saveDb();
+
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/assets/tickets/:id - update ticket status, optionally closing it and updating the device
+router.put('/tickets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, returnToStatus, deviceCondition } = req.body;
+
+    const tickets = await getTickets();
+    const ticketIdx = tickets.findIndex(t => t.id === id);
+
+    if (ticketIdx === -1) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const ticket = tickets[ticketIdx];
+    ticket.status = status;
+
+    if (status === 'Closed') {
+      ticket.resolvedAt = new Date().toISOString();
+
+      if (!returnToStatus || !deviceCondition) {
+        return res.status(400).json({ error: 'Device destination (returnToStatus) and condition (deviceCondition) are required to close ticket.' });
+      }
+
+      // Put asset back in service based on destination
+      const assetStatus = returnToStatus === 'Assigned' ? 'Assigned' : 'New';
+      const assignedTo = returnToStatus === 'Assigned' ? ticket.reportedBy : null;
+
+      await updateAsset(ticket.assetId, {
+        status: assetStatus,
+        condition: deviceCondition,
+        assignedTo,
+        handoverAcknowledged: assetStatus === 'Assigned' ? true : false
+      });
+    }
+
     const { saveDb } = await import('../db.js');
     await saveDb();
 

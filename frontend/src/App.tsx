@@ -237,24 +237,24 @@ export default function App() {
     await fetchData();
   };
 
-  // 8. Admin Resolve IT ticket
-  const handleResolveTicket = async (ticketId: string, returnToStatus: string) => {
+  // 8. Admin Update IT ticket status
+  const handleUpdateTicket = async (ticketId: string, status: string, returnToStatus?: string, deviceCondition?: string) => {
     try {
-      const res = await fetch(`${API_BASE}/assets/tickets/${ticketId}/resolve`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE}/assets/tickets/${ticketId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ returnToStatus })
+        body: JSON.stringify({ status, returnToStatus, deviceCondition })
       });
 
       if (!res.ok) {
-        throw new Error('Resolve failed');
+        throw new Error('Update ticket failed');
       }
 
       await fetchData();
       await fetchAnalytics();
-      alert('Issue resolved! Device returned to storage/employee.');
     } catch (err) {
       console.error(err);
+      throw err;
     }
   };
 
@@ -478,6 +478,7 @@ export default function App() {
         {activeTab === 'backpack' && currentUser && (
           <TechBackpack
             assets={assets}
+            tickets={tickets}
             userId={currentUser.id}
             onAcknowledge={handleAcknowledgeAsset}
             onSubmitTicket={handleReportIssue}
@@ -495,7 +496,7 @@ export default function App() {
             currentUserId={currentUser.id}
             analytics={analytics}
             onAssignAsset={handleAssignAsset}
-            onResolveTicket={handleResolveTicket}
+            onUpdateTicket={handleUpdateTicket}
             onOffboardUser={handleOffboardUser}
             onAddDesk={handleAddDesk}
             onDeleteDesk={handleDeleteDesk}
