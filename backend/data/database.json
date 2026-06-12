@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": "user-1",
+      "name": "Jane Doe",
+      "email": "jane@company.com",
+      "role": "Employee",
+      "title": "Senior Developer"
+    },
+    {
+      "id": "user-2",
+      "name": "Bob Smith",
+      "email": "bob@company.com",
+      "role": "IT Admin",
+      "title": "IT Systems Administrator"
+    },
+    {
+      "id": "user-3",
+      "name": "Alice Johnson",
+      "email": "alice@company.com",
+      "role": "HR Manager",
+      "title": "Office & HR Manager"
+    },
+    {
+      "id": "user-4",
+      "name": "Charlie Brown",
+      "email": "charlie@company.com",
+      "role": "Employee",
+      "title": "Product Manager"
+    }
+  ],
+  "desks": [],
+  "rooms": [],
+  "assets": [],
+  "bookings": [],
+  "tickets": []
+}

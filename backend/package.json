@@ -1,0 +1,15 @@
+{
+  "name": "spaceops-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Booking Engine and IT Asset Tracker",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
