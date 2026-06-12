@@ -337,6 +337,18 @@ export default function App() {
     await fetchData();
   };
 
+  // 15. IT Asset Decommission
+  const handleDecommissionAsset = async (assetId: string) => {
+    const res = await fetch(`${API_BASE}/assets/${assetId}/decommission`, {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to decommission asset');
+    }
+    await fetchData();
+  };
+
   // Render view
   if (loading) {
     return (
@@ -476,6 +488,7 @@ export default function App() {
             onAddRoom={handleAddRoom}
             onDeleteRoom={handleDeleteRoom}
             onRegisterAsset={handleRegisterAsset}
+            onDecommissionAsset={handleDecommissionAsset}
             onRefreshData={fetchData}
           />
         )}

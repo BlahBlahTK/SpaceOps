@@ -209,4 +209,22 @@ router.post('/tickets/:id/resolve', async (req, res) => {
   }
 });
 
+// POST /api/assets/:id/decommission - decommission asset
+router.post('/:id/decommission', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await updateAsset(id, {
+      status: 'Decommissioned',
+      assignedTo: null,
+      condition: 'Decommissioned'
+    });
+    if (!updated) {
+      return res.status(404).json({ error: 'Asset not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

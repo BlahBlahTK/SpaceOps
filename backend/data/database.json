@@ -31,7 +31,31 @@
   ],
   "desks": [],
   "rooms": [],
-  "assets": [],
+  "assets": [
+    {
+      "id": "asset-1781254741139",
+      "name": "macbook air m5",
+      "serialNumber": "KDWANFIJWNFAIJW",
+      "status": "New",
+      "assignedTo": null,
+      "condition": "New",
+      "warrantyUntil": "2028-06-12",
+      "handoverAcknowledged": false
+    }
+  ],
   "bookings": [],
-  "tickets": []
+  "tickets": [
+    {
+      "id": "ticket-1781254781874-400",
+      "assetId": "asset-1781254741139",
+      "assetName": "macbook air m5",
+      "serialNumber": "KDWANFIJWNFAIJW",
+      "reportedBy": "user-1",
+      "reportedByName": "Jane Doe",
+      "description": "screen not working\n",
+      "status": "Resolved",
+      "createdAt": "2026-06-12T08:59:41.874Z",
+      "resolvedAt": "2026-06-12T08:59:51.298Z"
+    }
+  ]
 }

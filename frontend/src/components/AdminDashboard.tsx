@@ -86,6 +86,7 @@ interface AdminDashboardProps {
   onAddRoom: (roomData: any) => Promise<void>;
   onDeleteRoom: (roomId: string) => Promise<void>;
   onRegisterAsset: (assetData: any) => Promise<void>;
+  onDecommissionAsset: (assetId: string) => Promise<void>;
   onRefreshData: () => void;
 }
 
@@ -106,9 +107,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddRoom,
   onDeleteRoom,
   onRegisterAsset,
+  onDecommissionAsset,
   onRefreshData
 }) => {
-  const [adminSubTab, setAdminSubTab] = useState<'analytics' | 'it-assets' | 'offboarding' | 'designer'>('analytics');
+  const [adminSubTab, setAdminSubTab] = useState<'analytics' | 'it-assets' | 'offboarding' | 'designer' | 'storage'>('analytics');
   
   // IT Asset allocation form states
   const [selectedAssetToAssign, setSelectedAssetToAssign] = useState<string>('');
@@ -121,6 +123,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newAssetCondition, setNewAssetCondition] = useState('New');
   const [newAssetWarrantyYears, setNewAssetWarrantyYears] = useState(2);
   const [registering, setRegistering] = useState(false);
+
+  // Storage Inventory filter states
+  const [storageSearch, setStorageSearch] = useState('');
+  const [storageConditionFilter, setStorageConditionFilter] = useState('');
 
   // HR offboarding receipt states
   const [offboardReceipt, setOffboardReceipt] = useState<{
@@ -355,6 +361,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }}
         >
           💻 IT Assets & Repairs ({openTickets.length} Tickets)
+        </button>
+        <button
+          onClick={() => setAdminSubTab('storage')}
+          className="btn"
+          style={{
+            padding: '0.5rem 1.25rem',
+            fontSize: '0.85rem',
+            background: adminSubTab === 'storage' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+            color: adminSubTab === 'storage' ? 'white' : 'var(--text-secondary)',
+            border: adminSubTab === 'storage' ? '1px solid var(--accent-indigo)' : 'none'
+          }}
+        >
+          📦 Storage Inventory
         </button>
         <button
           onClick={() => setAdminSubTab('offboarding')}
@@ -1066,6 +1085,171 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* SUBTAB 5: STORAGE INVENTORY */}
+      {adminSubTab === 'storage' && (
+        <div className="glass-panel animate-fade-in" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.3rem', color: 'white', fontFamily: 'var(--font-display)' }}>
+                📦 Storage & Inventory Repository
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                All devices currently in storage (unassigned) and their operational conditions.
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Search name or serial..."
+                value={storageSearch}
+                onChange={(e) => setStorageSearch(e.target.value)}
+                style={{ width: '220px', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+              />
+              <select
+                className="form-input"
+                value={storageConditionFilter}
+                onChange={(e) => setStorageConditionFilter(e.target.value)}
+                style={{ width: '160px', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+              >
+                <option value="">All Conditions</option>
+                <option value="New">New</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Good">Good</option>
+                <option value="Fair">Fair</option>
+                <option value="Poor">Poor</option>
+                <option value="Refurbished">Refurbished</option>
+                <option value="In Repair">In Repair</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
+                  <th style={{ padding: '0.75rem 1rem' }}>Device Name</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Serial Number</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Condition</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Status</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Warranty Status</th>
+                  <th style={{ padding: '0.75rem 1rem', textAnchor: 'end' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const storageAssets = assets.filter(a => !a.assignedTo && a.status !== 'Decommissioned');
+                  
+                  const filtered = storageAssets.filter(asset => {
+                    const matchesSearch = asset.name.toLowerCase().includes(storageSearch.toLowerCase()) ||
+                      asset.serialNumber.toLowerCase().includes(storageSearch.toLowerCase());
+                    const matchesCondition = !storageConditionFilter || asset.condition === storageConditionFilter;
+                    return matchesSearch && matchesCondition;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No unassigned devices found in storage matching filters. Register new ones or resolve repair tickets!
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return filtered.map(asset => {
+                    const today = new Date();
+                    const expiry = new Date(asset.warrantyUntil);
+                    const diffTime = expiry.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    let warrantyText = `${diffDays} days left`;
+                    let warrantyColor = '#10B981';
+                    if (diffDays < 0) {
+                      warrantyText = 'Expired';
+                      warrantyColor = '#EF4444';
+                    } else if (diffDays <= 90) {
+                      warrantyText = `${diffDays} days (Expiring)`;
+                      warrantyColor = '#F59E0B';
+                    } else if (diffDays > 3000) {
+                      warrantyText = 'Lifetime';
+                      warrantyColor = '#8B5CF6';
+                    }
+
+                    const getConditionColorClass = (cond: string) => {
+                      switch (cond) {
+                        case 'New':
+                        case 'Excellent':
+                          return 'badge-success';
+                        case 'Good':
+                        case 'Refurbished':
+                          return 'badge-info';
+                        case 'Fair':
+                          return 'badge-warning';
+                        case 'Poor':
+                        case 'In Repair':
+                        default:
+                          return 'badge-danger';
+                      }
+                    };
+
+                    return (
+                      <tr key={asset.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)', color: 'white' }}>
+                        <td style={{ padding: '1rem', fontWeight: '700' }}>{asset.name}</td>
+                        <td style={{ padding: '1rem' }}><code style={{ color: 'var(--accent-cyan)' }}>{asset.serialNumber}</code></td>
+                        <td style={{ padding: '1rem' }}>
+                          <span className={`badge ${getConditionColorClass(asset.condition)}`} style={{ fontSize: '0.65rem' }}>
+                            {asset.condition}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <span className={`badge ${asset.status === 'In Repair' ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.65rem', background: 'transparent', border: '1px solid currentColor' }}>
+                            {asset.status === 'In Repair' ? '🛠️ In Repair' : '📦 Storage'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem', color: warrantyColor, fontWeight: '700' }}>{warrantyText}</td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedAssetToAssign(asset.id);
+                                setAdminSubTab('it-assets');
+                              }}
+                              disabled={asset.status === 'In Repair'}
+                              className="btn btn-primary"
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px', background: 'var(--grad-success)' }}
+                            >
+                              Assign Device
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const confirmDecom = window.confirm(`Are you sure you want to decommission ${asset.name} (S/N: ${asset.serialNumber})? This will permanently retire the device.`);
+                                if (confirmDecom) {
+                                  try {
+                                    await onDecommissionAsset(asset.id);
+                                    alert('Device retired successfully.');
+                                  } catch (err) {
+                                    alert('Failed to decommission device.');
+                                  }
+                                }
+                              }}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px', color: '#F87171', borderColor: 'rgba(239, 68, 68, 0.15)' }}
+                            >
+                              Decommission
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
